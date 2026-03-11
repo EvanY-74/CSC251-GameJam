@@ -1,24 +1,33 @@
 class Player {
     constructor() {
         // Position & size
-        this.x = canvas.width / 2;
+        this.x = canvas.width / 2; // bottom left corner of player
         this.y = canvas.height / 2;
         this.z = 0;
         this.width = 32;
-        this.height = 32;
+        this.HEIGHT = 32;
+        this.height = this.HEIGHT;
         
         this.vx = 0;
         this.vy = 0;
         this.vz = 0;
-        this.jumping = false;
+
         
         this.speed = 400;
         this.acceleration = 2400;
         this.friction = 2300;
-        this.jumpForce = 300;
-        this.gravity = 900;
+        this.airMovementMultiplier = 0.65; // reduce acceleration and friction if in the air
 
-        this.keys = { KeyW: false, KeyA: false, KeyS: false, KeyD: false, Space: false };
+        this.jumping = false;
+        this.jumpTime = 0;
+        this.maxJumpTime = 0.2;
+        this.jumpForce = 310;
+        this.gravity = 1200;
+
+        this.crouchSpeed = this.speed * 0.75;
+        this.crouchGravity = this.gravity * 2.25; // increase gravity when crouching (under certain circumstances)
+        
+        this.keys = { KeyW: false, KeyA: false, KeyS: false, KeyD: false, Space: false, ShiftLeft: false };
 
         // Bind and register input listeners
         this._onKeyDown = this._onKeyDown.bind(this);
@@ -34,8 +43,8 @@ class Player {
     _onKeyDown(e) {
         const k = e.code;
         if (k in this.keys) {
-        e.preventDefault();
-        this.keys[k] = true;
+            e.preventDefault();
+            this.keys[k] = true;
         }
     }
 
@@ -51,6 +60,43 @@ class Player {
     }
 
     update(dt) {
+        // z (jumping)
+        if (this.keys.Space && !this.jumping) {
+            this.jumping = true;
+            this.jumpTime = 0;
+            this.vz = this.jumpForce;
+        }
+        const gravity = this.keys.ShiftLeft ? this.crouchGravity : this.gravity;
+        if (this.z > 0 || this.vz > 0) {
+            if (this.keys.Space && this.jumpTime < this.maxJumpTime) {
+                const remaining = this.maxJumpTime - this.jumpTime;
+                if (dt <= remaining) {
+                    // entire step is within hold window
+                    this.jumpTime += dt;
+                    this.vz = this.jumpForce;
+                    this.z += this.vz * dt;
+                } else {
+                    // split: first part holds vz constant, second part applies gravity
+                    this.jumpTime = this.maxJumpTime;
+                    const dtHeld = remaining;
+                    const dtFall = dt - remaining;
+                    this.z += this.jumpForce * dtHeld;
+                    this.vz -= gravity * dtFall;
+                    this.z = Math.max(this.z + this.vz * dtFall, 0);
+                }
+            } else {
+                if (!this.keys.Space) this.jumpTime = this.maxJumpTime;
+                this.vz -= gravity * dt;
+                this.z = Math.max(this.z + this.vz * dt, 0);
+            }
+        } else {
+            this.jumping = false;
+            this.jumpTime = 0;
+        }
+
+        this.height = !this.keys.ShiftLeft ? this.HEIGHT : this.HEIGHT * 0.7;
+
+        // x and y
         let targetDx = 0;
         let targetDy = 0;
 
@@ -65,58 +111,49 @@ class Player {
             targetDy *= Math.SQRT1_2;
         }
 
-        this.vx += targetDx * dt;
-        this.vy += targetDy * dt;
+        this.vx += targetDx * (this.jumping ? this.airMovementMultiplier : 1) * dt;
+        this.vy += targetDy * (this.jumping ? this.airMovementMultiplier : 1) * dt;
 
         // Apply friction when no horizontal input
         const frictionX = Math.sign(targetDx) != Math.sign(this.vx);
         const frictionY = Math.sign(targetDy) != Math.sign(this.vy);
         if (frictionX) {
             let sign = Math.sign(this.vx);
-            this.vx -= sign * this.friction * (frictionY ? Math.SQRT1_2 : 1) * dt;
+            this.vx -= sign * this.friction * (this.jumping ? this.airMovementMultiplier : 1) * (frictionY ? Math.SQRT1_2 : 1) * dt;
             if (sign != Math.sign(this.vx)) this.vx = 0; // stop overcorrection
         }
 
         // Apply friction when no vertical input
         if (frictionY) {
             let sign = Math.sign(this.vy);
-            this.vy -= sign * this.friction * (frictionX ? Math.SQRT1_2 : 1) * dt;
+            this.vy -= sign * this.friction * (this.jumping ? this.airMovementMultiplier : 1) * (frictionX ? Math.SQRT1_2 : 1) * dt;
             if (sign != Math.sign(this.vy)) this.vy = 0; // stop overcorrection
         }
 
         // Clamp to max speed
+        const speed = this.ShiftLeft ? this.crouchSpeed : this.speed;
         const currentSpeed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
-        if (currentSpeed > this.speed) {
-            this.vx = (this.vx / currentSpeed) * this.speed;
-            this.vy = (this.vy / currentSpeed) * this.speed;
+        if (currentSpeed > speed) {
+            this.vx = (this.vx / currentSpeed) * speed;
+            this.vy = (this.vy / currentSpeed) * speed;
         }
 
         this.x += this.vx * dt;
         this.y += this.vy * dt;
 
         // Clamp to canvas bounds
-        this.x = Math.max(this.width / 2, Math.min(canvas.width  - this.width / 2, this.x));
-        this.y = Math.max(this.height / 2, Math.min(canvas.height - this.height / 2, this.y));
+        this.x = Math.max(0, Math.min(canvas.width - this.width, this.x));
+        this.y = Math.max(this.height, Math.min(canvas.height, this.y));
 
         // ── Jump / gravity ──
 
-        // TODO: add higher jump height when holding space (but only for certain amount)
-        // TODO: add shift key to increase gravity
         // TODO: add dash
-        if (this.keys.Space && this.jumping == false) {
-            this.jumping = true;
-            this.vz = this.jumpForce;
-        }
-        if (this.z > 0 || this.vz > 0) {
-            this.vz -= this.gravity * dt;
-            this.z = Math.max(this.z + this.vz * dt, 0);
-        } else this.jumping = false;
     }
 
     draw() {
         // Body
         ctx.fillStyle = "#4f9eff";
-        ctx.fillRect(this.x, this.y - this.z, this.width, this.height);
+        ctx.fillRect(this.x, this.y - this.height - this.z, this.width, this.height);
 
         if (this.z == 0) return;
 
@@ -135,7 +172,7 @@ class Player {
         ctx.beginPath();
         ctx.ellipse(
             this.x + this.width / 2,
-            this.y + this.height,
+            this.y,
             this.width / 2 * shadowScale,
             this.height / 4 * shadowScale,
             0, 0, 2 * Math.PI);

@@ -23,6 +23,13 @@ function init(timestamp) {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     player.update(dt);
+    obstacles.forEach(obstacle => {
+        obstacle.update(dt);
+        obstacle.checkCollision(dt);
+    });
+    obstacles.forEach(obstacle => {
+        obstacle.draw();
+    });
     player.draw();
 
     requestAnimationFrame(init);
