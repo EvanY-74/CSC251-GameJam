@@ -69,6 +69,7 @@ class Ball extends Obstacle {
      */
     checkCollision() {
         if (!this.active) return false;
+        if (player.z > 0) return false;
 
         // Convert bottom-left origin → standard top-left AABB
         const rectX = player.x;
@@ -98,33 +99,96 @@ class Ball extends Obstacle {
         ctx.save();
 
         // Outer glow
-        ctx.shadowColor = "rgba(255, 80, 80, 0.7)";
+        ctx.shadowColor = 'rgba(255, 80, 80, 0.7)';
         ctx.shadowBlur  = this.radius * 0.8;
 
         // Ball fill
-        const gradient = ctx.createRadialGradient(
-            this.x - this.radius * 0.3,
-            this.y - this.radius * 0.3,
-            this.radius * 0.1,
-            this.x,
-            this.y,
-            this.radius
-        );
-        gradient.addColorStop(0, "#ff9f9f");
-        gradient.addColorStop(1, "#cc0000");
+        // const gradient = ctx.createRadialGradient(
+        //     this.x - this.radius * 0.3,
+        //     this.y - this.radius * 0.3,
+        //     this.radius * 0.1,
+        //     this.x,
+        //     this.y,
+        //     this.radius
+        // );
+        // gradient.addColorStop(0, "#ff9f9f");
+        // gradient.addColorStop(1, "#cc0000");
 
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.fillStyle = gradient;
+        ctx.fillStyle = 'rgb(255, 40, 40)';
         ctx.fill();
 
         // Subtle outline
-        ctx.strokeStyle = "rgba(255,255,255,0.25)";
-        ctx.lineWidth    = 1.5;
+        ctx.beginPath();
+        ctx.fillStyle = 'rgb(255, 40, 40)';
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+        ctx.lineWidth = 5;
+        ctx.arc(this.x, this.y, this.radius - ctx.lineWidth / 2, 0, Math.PI * 2);
         ctx.stroke();
 
         ctx.restore();
     }
 }
 
-obstacles = [new Ball(20, 20)];
+class LaserPair extends Obstacle {
+    /**
+     * Two symmetrical vertical lasers that move across the screen
+     * and pass each other in the center.
+     */
+    constructor(width = 15, speed = 120) {
+        super(0, 0);
+
+        this.width = width;
+        this.speed = speed;
+
+        // horizontal shift from center
+        console.log(canvas.width)
+        this.offset = canvas.width / 3;
+    }
+
+    // ─── update ─────────────────────────────────────────────
+    update(dt) {
+        const maxRange = canvas.width / 2 + this.width;
+
+        this.offset += this.speed * dt;
+
+        // reset once beams fully pass the screen
+        if (this.offset > maxRange) {
+            this.offset = -maxRange;
+        }
+    }
+
+    // ─── helper ─────────────────────────────────────────────
+    _beamPositions() {
+        const center = canvas.width / 2;
+
+        return {
+            leftX: center - this.offset - this.width / 2,
+            rightX: center + this.offset - this.width / 2
+        };
+    }
+
+    // ─── collision ──────────────────────────────────────────
+    checkCollision() {
+        if (!this.active) return false;
+        if (player.z > 0) return false;
+
+        const result = Math.abs(Math.abs(player.x + player.width / 2 - canvas.width / 2) - Math.abs(this.offset)) <= player.width / 2 + this.width / 2;
+        if (result) this.active = false;
+        return result;
+    }
+
+    // ─── draw ───────────────────────────────────────────────
+    draw() {
+        if (!this.active) return;
+
+        const H = canvas.height;
+        const { leftX, rightX } = this._beamPositions();
+
+        ctx.fillStyle = "#cc0000";
+
+        ctx.fillRect(leftX, 0, this.width, H);
+        ctx.fillRect(rightX, 0, this.width, H);
+    }
+}

@@ -1,7 +1,7 @@
 class Player {
     constructor() {
         // Position & size
-        this.x = canvas.width / 2; // bottom left corner of player
+        this.x = canvas.width / 4; // bottom left corner of player
         this.y = canvas.height / 2;
         this.z = 0;
         this.width = 32;

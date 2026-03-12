@@ -15,6 +15,8 @@ window.addEventListener('resize', resizeCanvas);
 const player = new Player();
 let lastTime = 0;
 
+obstacles = [new LaserPair()];
+
 function init(timestamp) {
     const dt = (timestamp - lastTime) / 1000;
     lastTime = timestamp;
@@ -39,5 +41,3 @@ requestAnimationFrame((timestamp) => {
     lastTime = timestamp;
     requestAnimationFrame(init);
 });
-
-// init();
