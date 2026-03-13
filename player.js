@@ -2,7 +2,7 @@ class Player {
     constructor() {
         // Position & size
         this.x = canvas.width / 4; // bottom left corner of player
-        this.y = canvas.height / 2;
+        this.y = canvas.height / 3;
         this.z = 0;
         this.width = 32;
         this.HEIGHT = 32;
@@ -16,7 +16,7 @@ class Player {
         this.speed = 400;
         this.acceleration = 2400;
         this.friction = 2300;
-        this.airMovementMultiplier = 0.65; // reduce acceleration and friction if in the air
+        this.airMovementMultiplier = 0.75; // reduce acceleration and friction if in the air
 
         this.jumping = false;
         this.jumpTime = 0;
@@ -24,7 +24,7 @@ class Player {
         this.jumpForce = 310;
         this.gravity = 1200;
 
-        this.crouchSpeed = this.speed * 0.75;
+        this.crouchSpeed = this.speed * 0.3;
         this.crouchGravity = this.gravity * 2.25; // increase gravity when crouching (under certain circumstances)
         
         this.keys = { KeyW: false, KeyA: false, KeyS: false, KeyD: false, Space: false, ShiftLeft: false };
@@ -131,7 +131,7 @@ class Player {
         }
 
         // Clamp to max speed
-        const speed = this.ShiftLeft ? this.crouchSpeed : this.speed;
+        const speed = this.keys.ShiftLeft ? this.crouchSpeed : this.speed;
         const currentSpeed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
         if (currentSpeed > speed) {
             this.vx = (this.vx / currentSpeed) * speed;
@@ -144,10 +144,6 @@ class Player {
         // Clamp to canvas bounds
         this.x = Math.max(0, Math.min(canvas.width - this.width, this.x));
         this.y = Math.max(this.height, Math.min(canvas.height, this.y));
-
-        // ── Jump / gravity ──
-
-        // TODO: add dash
     }
 
     draw() {
