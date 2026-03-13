@@ -12,4 +12,4 @@ Clone the repo and open index.html in a browser
 
 - WSAD to move
 - space to jump
-- Shift to crouch
+- Left Shift to crouch
